@@ -25,26 +25,6 @@ def checkproxy(proxy):
 
 
 def download(proxy, display):
-    shell = ""
-    if "sub" in display:
-        shell = "{bin}/youtube-dl {param} {sub} --proxy socks5://{proxy} {url} -o '{dir}/download/%(title)s.%(ext)s'".format(
-            bin=cnf.BASEDIR,
-            param=cnf.YOUTUBEPARAM,
-            sub=cnf.YOUTUBESUB,
-            proxy=proxy,
-            url=display["url"],
-            dir=cnf.DATADIR
-        )
-    else:
-        shell = "{bin}/youtube-dl {param} --proxy socks5://{proxy} {url} -o '{dir}/download/%(title)s.%(ext)s'".format(
-            bin=cnf.BASEDIR,
-            param=cnf.YOUTUBEPARAM,
-            proxy=proxy,
-            url=display["url"],
-            dir=cnf.DATADIR
-        )
-    os.system(shell)
-
     shell = "{bin}/youtube-dl {param} --proxy socks5://{proxy} {url} --get-title".format(
         bin=cnf.BASEDIR,
         param=cnf.YOUTUBEPARAM,
@@ -53,21 +33,43 @@ def download(proxy, display):
     )
     p = subprocess.Popen(shell, shell=True, stdout=subprocess.PIPE)
     out, err = p.communicate()
-    title = out.strip().decode('utf-8')
+    title = out.strip().decode('unicode_escape')
+    display["id"] = display["url"].replace("https://www.youtube.com/watch?v=", "")
+
+    if "sub" in display:
+        shell = "{bin}/youtube-dl {param} {sub} --proxy socks5://{proxy} {url} -o '{dir}/%(id)s.%(ext)s'".format(
+            bin=cnf.BASEDIR,
+            param=cnf.YOUTUBEPARAM,
+            sub=cnf.YOUTUBESUB,
+            proxy=proxy,
+            url=display["url"],
+            dir=cnf.DATADIR
+        )
+    else:
+        shell = "{bin}/youtube-dl {param} --proxy socks5://{proxy} {url} -o '{dir}/%(id)s.%(ext)s'".format(
+            bin=cnf.BASEDIR,
+            param=cnf.YOUTUBEPARAM,
+            proxy=proxy,
+            url=display["url"],
+            dir=cnf.DATADIR
+        )
+    os.system(shell)
 
     hl = hashlib.md5()
+
     hl.update(title.encode())
     md5str = hl.hexdigest()
     display["title"] = title
     display["tmp"] = md5str
     display["middle"] = md5str + ".m.mp4"
-    display["target"] = title.replace("'", " ") + ".mp4"
+    display["target"] = display["id"] + ".mp4"
 
     decode(proxy, display)
 
 
 def decode(proxy, display):
-    src_file = "{dir}/{title}.mp4".format(dir=cnf.DATADIR, title=display["title"])
+    src_file = "{dir}/{id}.mp4".format(dir=cnf.DATADIR, id=display["id"])
+    print(src_file)
     if os.path.exists(src_file):
         subtitle(display)
         cut(display)
@@ -88,37 +90,45 @@ def cut(display):
     shell.append("-i {dir}/{tmp}.mp4".format(dir=cnf.DATADIR, tmp=display["tmp"]))
     if "lx" in display:
         delogo = "x={lx}:y={ly}:w={w}:h={h}".format(
-            x=display["lx"],
-            y=display["ly"],
-            w=display["rx"]-display["lx"],
-            h=display["ry"]-display["ly"]
+            lx=display["lx"],
+            ly=display["ly"],
+            w=display["rx"] - display["lx"],
+            h=display["ry"] - display["ly"]
         )
         shell.append("-vf delogo={delogo} -vcodec h264_videotoolbox -b:v 5000K".format(delogo=delogo))
     else:
         shell.append("-vcodec copy -acodec copy")
 
     shell.append("{dir}/{middle}".format(dir=cnf.DATADIR, middle=display["middle"]))
-
     os.system(" ".join(shell))
 
-    os.system("ffmpeg 'concat:{head}|{dir}/{middle}' -vcodec copy -acodec copy {target}".format(
-        head=cnf.HDADMP4,
+    os.system("ffmpeg -i {dir}/{middle} -vcodec copy -acodec copy -vbsf h264_mp4toannexb {dir}/{id}.ts".format(
         dir=cnf.DATADIR,
         middle=display["middle"],
+        id=display["id"]
+    ))
+
+    os.system("ffmpeg -i 'concat:{head}|{dir}/{id}.ts' -acodec copy -vcodec copy -absf aac_adtstoasc {dir}/{target}".format(
+        head=cnf.HDADMP4,
+        dir=cnf.DATADIR,
+        id=display["id"],
         target=display["target"]
     ))
 
+    os.remove("{dir}/{middle}".format(dir=cnf.DATADIR,middle=display["middle"]))
+    os.remove("{dir}/{id}.ts".format(dir=cnf.DATADIR,id=display["id"]))
+    os.remove("{dir}/{tmp}.mp4".format(dir=cnf.DATADIR,tmp=display["tmp"]))
 
 def subtitle(display):
     if "sub" in display:
-        os.rename("{dir}/{title}.zh-Hans.srt".format(dir=cnf.DATADIR, title=display["title"]),
+        os.rename("{dir}/{id}.zh-Hans.srt".format(dir=cnf.DATADIR, id=display["id"]),
                   "{dir}/{tmp}.srt".format(dir=cnf.DATADIR, tmp=display["tmp"]))
         os.system(
-            "ffmpeg -i {dir}/{title}.mp4 -vf subtitles={dir}/{tmp}.srt -vcodec h264_videotoolbox -b:v 5000K {dir}/{tmp}.mp4".format(
+            "ffmpeg -i {dir}/{id}.mp4 -vf subtitles={dir}/{tmp}.srt -vcodec h264_videotoolbox -b:v 5000K {dir}/{tmp}.mp4".format(
                 dir=cnf.DATADIR,
-                title=display["title"],
+                id=display["id"],
                 tmp=display["tmp"]
             ))
     else:
-        os.rename("{dir}/{title}.mp4".format(dir=cnf.DATADIR, title=display["title"]),
+        os.rename("{dir}/{id}.mp4".format(dir=cnf.DATADIR, id=display["id"]),
                   "{dir}/{tmp}.mp4".format(dir=cnf.DATADIR, tmp=display["tmp"]))

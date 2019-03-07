@@ -2,13 +2,11 @@
 # -*- coding: utf-8 -*-
 
 BASEDIR = "/Users/yuanliqiang/workspace/y2t"
-HDADMP4 = "/Users/yuanliqiang/workspace/y2t/dota2p.mp4"
-DATADIR = "/Volumes/SamsungTF"
+HDADMP4 = "/Users/yuanliqiang/workspace/y2t/dota2.ts"
+DATADIR = "/Volumes/SamsungTF/download"
 # YOUTUBEPARAM="-f '(bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4])' --buffer-size 16k --write-thumbnail --retries infinite"
 YOUTUBEPARAM = "-f '(bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4])' --buffer-size 16k --retries infinite"
 YOUTUBESUB="--write-auto-sub --sub-lang=zh-Hans --convert-subs=srt"
-
-hl = hashlib.md5()
 
 PROXYLIST = []
 
