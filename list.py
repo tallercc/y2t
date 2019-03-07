@@ -3,5 +3,6 @@
 
 DISPLAYLIST = []
 
-DISPLAYLIST.append({"url": "https://www.youtube.com/watch?v=LJ9Lm3VUvuE"})
-DISPLAYLIST.append({"url": "https://www.youtube.com/watch?v=ZRJjEXP62OE","sub":0})
+DISPLAYLIST.append({"url": "https://www.youtube.com/watch?v=LIVQJgGCXEQ","ss":10,"t":12.5,"lx":1360,"ly":1030,"rx":1640"ry":1060})
+
+
