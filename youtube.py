@@ -123,6 +123,9 @@ def cut(display):
     os.rename("{dir}/{target}".format(dir=cnf.DATADIR, target=display["target"]),
               "{dir}/{title}.mp4".format(dir=cnf.DATADIR, title=display["title"]))
 
+    os.rename("{dir}/{id}.jpg".format(dir=cnf.DATADIR, id=display["id"]),
+              "{dir}/{title}.jpg".format(dir=cnf.DATADIR, title=display["title"]))
+
 
 def subtitle(display):
     if "sub" in display:
