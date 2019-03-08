@@ -108,16 +108,18 @@ def cut(display):
         id=display["id"]
     ))
 
-    os.system("ffmpeg -i 'concat:{head}|{dir}/{id}.ts' -acodec copy -vcodec copy -absf aac_adtstoasc {dir}/{target}".format(
-        head=cnf.HDADMP4,
-        dir=cnf.DATADIR,
-        id=display["id"],
-        target=display["target"]
-    ))
+    os.system(
+        "ffmpeg -i 'concat:{head}|{dir}/{id}.ts' -acodec copy -vcodec copy -absf aac_adtstoasc {dir}/{target}".format(
+            head=cnf.HDADMP4,
+            dir=cnf.DATADIR,
+            id=display["id"],
+            target=display["target"]
+        ))
 
-    os.remove("{dir}/{middle}".format(dir=cnf.DATADIR,middle=display["middle"]))
-    os.remove("{dir}/{id}.ts".format(dir=cnf.DATADIR,id=display["id"]))
-    os.remove("{dir}/{tmp}.mp4".format(dir=cnf.DATADIR,tmp=display["tmp"]))
+    os.remove("{dir}/{middle}".format(dir=cnf.DATADIR, middle=display["middle"]))
+    os.remove("{dir}/{id}.ts".format(dir=cnf.DATADIR, id=display["id"]))
+    os.remove("{dir}/{tmp}.mp4".format(dir=cnf.DATADIR, tmp=display["tmp"]))
+
 
 def subtitle(display):
     if "sub" in display:
@@ -129,6 +131,8 @@ def subtitle(display):
                 id=display["id"],
                 tmp=display["tmp"]
             ))
+        os.remove("{dir}/{id}.mp4".format(dir=cnf.DATADIR, id=display["id"]))
+        os.remove("{dir}/{tmp}.srt".format(dir=cnf.DATADIR, tmp=display["tmp"]))
     else:
         os.rename("{dir}/{id}.mp4".format(dir=cnf.DATADIR, id=display["id"]),
                   "{dir}/{tmp}.mp4".format(dir=cnf.DATADIR, tmp=display["tmp"]))
