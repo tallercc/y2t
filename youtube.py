@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os, subprocess, time
-import hashlib
+import hashlib, re
 from moviepy.editor import VideoFileClip
 
 import cnf
@@ -33,7 +33,7 @@ def download(proxy, display):
     )
     p = subprocess.Popen(shell, shell=True, stdout=subprocess.PIPE)
     out, err = p.communicate()
-    title = out.strip().decode('unicode_escape')
+    title = out.strip().decode('utf-8')
     display["id"] = display["url"].replace("https://www.youtube.com/watch?v=", "")
 
     if "sub" in display:
@@ -59,7 +59,7 @@ def download(proxy, display):
 
     hl.update(title.encode())
     md5str = hl.hexdigest()
-    display["title"] = title
+    display["title"] = re.sub(r'[\\\/\:\*\?\"\'\<\>\|\.]', "", title)
     display["tmp"] = md5str
     display["middle"] = md5str + ".m.mp4"
     display["target"] = display["id"] + ".mp4"
@@ -119,6 +119,9 @@ def cut(display):
     os.remove("{dir}/{middle}".format(dir=cnf.DATADIR, middle=display["middle"]))
     os.remove("{dir}/{id}.ts".format(dir=cnf.DATADIR, id=display["id"]))
     os.remove("{dir}/{tmp}.mp4".format(dir=cnf.DATADIR, tmp=display["tmp"]))
+
+    os.rename("{dir}/{target}".format(dir=cnf.DATADIR, target=display["target"]),
+              "{dir}/{title}.mp4".format(dir=cnf.DATADIR, title=display["title"]))
 
 
 def subtitle(display):
