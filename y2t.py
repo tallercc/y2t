@@ -27,8 +27,8 @@ if __name__ == "__main__":
     idx = 0
     plist = []
 
-    for proxy in cnf.PROXYLIST:
-        youtube.checkproxy(proxy)
+#    for proxy in cnf.PROXYLIST:
+#        youtube.checkproxy(proxy)
 
     for proxy in cnf.PROXYLIST:
         if idx < l:

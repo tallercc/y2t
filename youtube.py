@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os, subprocess, time
-import hashlib, re
-from moviepy.editor import VideoFileClip
+import os, subprocess, time, hashlib, re
 
 import cnf
 
@@ -24,6 +22,15 @@ def checkproxy(proxy):
         time.sleep(3)
 
 
+def time2duration(t):
+    h, m, s = t.split(':')
+    if s.find(".") > 0:
+        s, ms = s.split('.')
+        return int(h) * 3600 + int(m) * 60 + int(s) + int(ms.ljust(3, "0")) * 0.001
+    else:
+        return int(h) * 3600 + int(m) * 60 + int(s)
+
+
 def download(proxy, display):
     shell = "{bin}/youtube-dl {param} --proxy socks5://{proxy} {url} --get-title".format(
         bin=cnf.BASEDIR,
@@ -34,58 +41,84 @@ def download(proxy, display):
     p = subprocess.Popen(shell, shell=True, stdout=subprocess.PIPE)
     out, err = p.communicate()
     title = out.strip().decode('utf-8')
-    display["id"] = display["url"].replace("https://www.youtube.com/watch?v=", "")
-
-    if "sub" in display:
-        shell = "{bin}/youtube-dl {param} {sub} --proxy socks5://{proxy} {url} -o '{dir}/%(id)s.%(ext)s'".format(
-            bin=cnf.BASEDIR,
-            param=cnf.YOUTUBEPARAM,
-            sub=cnf.YOUTUBESUB,
-            proxy=proxy,
-            url=display["url"],
-            dir=cnf.DATADIR
-        )
-    else:
-        shell = "{bin}/youtube-dl {param} --proxy socks5://{proxy} {url} -o '{dir}/%(id)s.%(ext)s'".format(
-            bin=cnf.BASEDIR,
-            param=cnf.YOUTUBEPARAM,
-            proxy=proxy,
-            url=display["url"],
-            dir=cnf.DATADIR
-        )
-    os.system(shell)
-
     hl = hashlib.md5()
 
     hl.update(title.encode())
     md5str = hl.hexdigest()
     display["title"] = re.sub(r'[\\\/\:\*\?\"\'\<\>\|\.]', "", title)
     display["tmp"] = md5str
-    display["middle"] = md5str + ".m.mp4"
-    display["target"] = display["id"] + ".mp4"
+    display["middle"] = md5str + "_m.mp4"
+    display["target"] = md5str + "_t.mp4"
+    display["id"] = md5str + "_id"
+
+    if "sub" in display:
+        shell = "{bin}/youtube-dl {param} {sub} --proxy socks5://{proxy} {url} -o '{dir}/{id}.%(ext)s'".format(
+            bin=cnf.BASEDIR,
+            param=cnf.YOUTUBEPARAM,
+            sub=cnf.YOUTUBESUB,
+            proxy=proxy,
+            url=display["url"],
+            dir=cnf.DATADIR,
+            id=display["id"]
+        )
+    else:
+        shell = "{bin}/youtube-dl {param} --proxy socks5://{proxy} {url} -o '{dir}/{id}.%(ext)s'".format(
+            bin=cnf.BASEDIR,
+            param=cnf.YOUTUBEPARAM,
+            proxy=proxy,
+            url=display["url"],
+            dir=cnf.DATADIR,
+            id=display["id"]
+        )
+    os.system(shell)
 
     decode(proxy, display)
 
 
 def decode(proxy, display):
     src_file = "{dir}/{id}.mp4".format(dir=cnf.DATADIR, id=display["id"])
-    print(src_file)
+    # print(src_file)
     if os.path.exists(src_file):
-        subtitle(display)
+        # subtitle(display)
         cut(display)
     else:
         download(proxy, display)
 
 
 def cut(display):
-    shell = ["ffmpeg"]
+    p = subprocess.Popen("ffmpeg -i {dir}/{id}.mp4 2>&1".format(dir=cnf.DATADIR, id=display["id"]), shell=True,
+                         stdout=subprocess.PIPE)
+    out, err = p.communicate()
+    out = out.decode('utf-8')
+    # print(out)
+    mt = re.search(r'Duration: ([0-9:\.]+),', out, re.M | re.I).group(1)
+    mp = out.find("1920x1080") > 0
+    kbs = re.search(r'bitrate: ([0-9]+) kb', out, re.M | re.I).group(1)
+
+    if "sub" in display:
+        os.rename("{dir}/{id}.zh-Hans.srt".format(dir=cnf.DATADIR, id=display["id"]),
+                  "{dir}/{tmp}.srt".format(dir=cnf.DATADIR, tmp=display["tmp"]))
+        os.system(
+            "ffmpeg -y -i {dir}/{id}.mp4 -vf subtitles={dir}/{tmp}.srt -vcodec h264_videotoolbox -s hd1080 -b:v {kbs}K -acodec copy {dir}/{tmp}.mp4 ".format(
+                dir=cnf.DATADIR,
+                id=display["id"],
+                tmp=display["tmp"],
+                kbs=kbs
+            ))
+    else:
+        os.system("ln -s {dir}/{id}.mp4 {dir}/{tmp}.mp4 ".format(dir=cnf.DATADIR, id=display["id"], tmp=display["tmp"]))
+    shell = []
+    shell.append("cd {dir} ; mkfifo {tmp}_h.ts {tmp}.ts ;".format(
+        dir=cnf.DATADIR,
+        tmp=display["tmp"]
+    ))
+    shell.append("ffmpeg -y")
     if "ss" in display:
         shell.append("-ss {ss}".format(ss=display["ss"]))
     if "to" in display:
         shell.append("-to {to}".format(to=display["to"]))
     if "t" in display:
-        clip = VideoFileClip("{dir}/{tmp}.mp4".format(dir=cnf.DATADIR, tmp=display["tmp"]))
-        clip_duration = clip.duration - display["ss"] - display["t"]
+        clip_duration = time2duration(mt) - display["ss"] - display["t"]
         shell.append("-t {t}".format(t=clip_duration))
     shell.append("-i {dir}/{tmp}.mp4".format(dir=cnf.DATADIR, tmp=display["tmp"]))
     if "lx" in display:
@@ -95,30 +128,51 @@ def cut(display):
             w=display["rx"] - display["lx"],
             h=display["ry"] - display["ly"]
         )
-        shell.append("-vf delogo={delogo} -vcodec h264_videotoolbox -b:v 5000K".format(delogo=delogo))
+
+        shell.append(
+            "-vf delogo={delogo} -vcodec h264_videotoolbox -s hd1080 -b:v {kbs}K -acodec copy".format(delogo=delogo,
+                                                                                                      kbs=kbs))
     else:
-        shell.append("-vcodec copy -acodec copy")
+        if mp:
+            shell.append("-vcodec copy -acodec copy")
+        else:
+            shell.append("-vcodec h264_videotoolbox -s hd1080 -b:v {kbs}K -acodec copy".format(kbs=kbs))
 
     shell.append("{dir}/{middle}".format(dir=cnf.DATADIR, middle=display["middle"]))
+
     os.system(" ".join(shell))
-
-    os.system("ffmpeg -i {dir}/{middle} -vcodec copy -acodec copy -vbsf h264_mp4toannexb {dir}/{id}.ts".format(
-        dir=cnf.DATADIR,
-        middle=display["middle"],
-        id=display["id"]
-    ))
-
-    os.system(
-        "ffmpeg -i 'concat:{head}|{dir}/{id}.ts' -acodec copy -vcodec copy -absf aac_adtstoasc {dir}/{target}".format(
+    shell = []
+    shell.append(
+        "ffmpeg -y -i {head} -vcodec copy -acodec copy -bsf:v h264_mp4toannexb -f mpegts {dir}/{tmp}_h.ts 2> /dev/null &".format(
             head=cnf.HDADMP4,
+            kbs=kbs,
             dir=cnf.DATADIR,
-            id=display["id"],
+            tmp=display["tmp"]
+        ))
+    shell.append(
+        "ffmpeg -y -i {dir}/{middle} -vcodec copy -acodec copy -bsf:v h264_mp4toannexb -f mpegts {dir}/{tmp}.ts 2> /dev/null &".format(
+            dir=cnf.DATADIR,
+            middle=display["middle"],
+            tmp=display["tmp"]
+        ))
+    shell.append(
+        "ffmpeg -y -f mpegts -i \"concat:{dir}/{tmp}_h.ts|{dir}/{tmp}.ts\" -vcodec copy -acodec copy -bsf:a aac_adtstoasc {dir}/{target}".format(
+            dir=cnf.DATADIR,
+            tmp=display["tmp"],
             target=display["target"]
         ))
 
-    os.remove("{dir}/{middle}".format(dir=cnf.DATADIR, middle=display["middle"]))
-    os.remove("{dir}/{id}.ts".format(dir=cnf.DATADIR, id=display["id"]))
-    os.remove("{dir}/{tmp}.mp4".format(dir=cnf.DATADIR, tmp=display["tmp"]))
+    os.system(" ".join(shell))
+
+    file_path="{dir}/{tmp}.mp4".format(dir=cnf.DATADIR,tmp=display["tmp"])
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    file_path = "{dir}/{middle}".format(dir=cnf.DATADIR, middle=display["middle"])
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    file_path = "{dir}/{tmp}.srt".format(dir=cnf.DATADIR, tmp=display["tmp"])
+    if os.path.exists(file_path):
+        os.remove(file_path)
 
     os.rename("{dir}/{target}".format(dir=cnf.DATADIR, target=display["target"]),
               "{dir}/{title}.mp4".format(dir=cnf.DATADIR, title=display["title"]))
