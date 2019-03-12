@@ -85,91 +85,103 @@ def decode(proxy, display):
         download(proxy, display)
 
 
+# mkfifo 3d2b3e859dd6a7fe2689ce85906d9fbd.ts ;
+# ffmpeg -y -i 3d2b3e859dd6a7fe2689ce85906d9fbd_id.mp4 -vf subtitles=a.srt -vcodec h264_videotoolbox -s hd1080 -b:v 4582K -acodec copy -f matroska pipe:1 |
+# ffmpeg -i pipe:0 -vf delogo=x=1360:y=1030:w=280:h=30 -vcodec h264_videotoolbox -s hd1080 -b:v 4582K -acodec copy -f matroska pipe:1 |
+# ffmpeg -y -i pipe:0 -vcodec copy -acodec copy -bsf:v h264_mp4toannexb -f mpegts 3d2b3e859dd6a7fe2689ce85906d9fbd.ts |
+# ffmpeg -y -f mpegts -i "concat:dota2.mp4.ts|3d2b3e859dd6a7fe2689ce85906d9fbd.ts" -vcodec copy -acodec copy -bsf:a aac_adtstoasc 3d2b3e859dd6a7fe2689ce85906d9fbd_t.mp4
 def cut(display):
     p = subprocess.Popen("ffmpeg -i {dir}/{id}.mp4 2>&1".format(dir=cnf.DATADIR, id=display["id"]), shell=True,
                          stdout=subprocess.PIPE)
     out, err = p.communicate()
     out = out.decode('utf-8')
-    # print(out)
+    # movie info
     mt = re.search(r'Duration: ([0-9:\.]+),', out, re.M | re.I).group(1)
     mp = out.find("1920x1080") > 0
     kbs = re.search(r'bitrate: ([0-9]+) kb', out, re.M | re.I).group(1)
+    # tmp.ts
+    if os.path.exists("{dir}/{tmp}.ts".format(dir=cnf.DATADIR, tmp=display["tmp"])):
+        os.remove("{dir}/{tmp}.ts".format(dir=cnf.DATADIR, tmp=display["tmp"]))
+    os.system("mkfifo {dir}/{tmp}.ts".format(dir=cnf.DATADIR, tmp=display["tmp"]))
+    # head ts
+    if not os.path.exists("{dir}/{head}.ts".format(dir=cnf.DATADIR, head=display["head"])):
+        os.system(
+            "ffmpeg -y -i {headdir}/{head} -vcodec copy -acodec copy -bsf:v h264_mp4toannexb -f mpegts {dir}/{head}.ts".format(
+                headdir=cnf.HEADDIR,
+                head=display["head"],
+                dir=cnf.DATADIR
+            ))
 
-    if "sub" in display:
+    shell = ["cd {dir};".format(dir=cnf.DATADIR)]
+    # cut movie
+    havecut =False
+    cutshell = ["ffmpeg -y"]
+    if "ss" in display:
+        havecut = True
+        cutshell.append("-ss {ss}".format(ss=display["ss"]))
+    if "to" in display:
+        havecut = True
+        cutshell.append("-to {to}".format(to=display["to"]))
+    if "t" in display:
+        havecut = True
+        clip_duration = time2duration(mt) - display["ss"] - display["t"]
+        cutshell.append("-t {t}".format(t=clip_duration))
+    if havecut:
+        cutshell.append("-i {id}.mp4 -vcodec copy -acodec copy -f matroska pipe:1 |".format(id=display["id"]))
+        shell.append(" ".join(cutshell))
+        shell.append("ffmpeg -y -i pipe:0")
+    else:
+        shell.append("ffmpeg -y -i {id}.mp4".format(id=display["id"]))
+    #movie sub
+    havesub = False
+    vfshell = []
+    subshell = []
+    if "sub" in display and os.path.exists("{dir}/{id}.zh-Hans.srt".format(dir=cnf.DATADIR, id=display["id"])):
+        havesub = True
         os.rename("{dir}/{id}.zh-Hans.srt".format(dir=cnf.DATADIR, id=display["id"]),
                   "{dir}/{tmp}.srt".format(dir=cnf.DATADIR, tmp=display["tmp"]))
-        os.system(
-            "ffmpeg -y -i {dir}/{id}.mp4 -vf subtitles={dir}/{tmp}.srt -vcodec h264_videotoolbox -s hd1080 -b:v {kbs}K -acodec copy {dir}/{tmp}.mp4 ".format(
-                dir=cnf.DATADIR,
-                id=display["id"],
-                tmp=display["tmp"],
-                kbs=kbs
-            ))
-    else:
-        os.system("ln -s {dir}/{id}.mp4 {dir}/{tmp}.mp4 ".format(dir=cnf.DATADIR, id=display["id"], tmp=display["tmp"]))
-    shell = []
-    shell.append("cd {dir} ; mkfifo {tmp}_h.ts {tmp}.ts ;".format(
-        dir=cnf.DATADIR,
-        tmp=display["tmp"]
-    ))
-    shell.append("ffmpeg -y")
-    if "ss" in display:
-        shell.append("-ss {ss}".format(ss=display["ss"]))
-    if "to" in display:
-        shell.append("-to {to}".format(to=display["to"]))
-    if "t" in display:
-        clip_duration = time2duration(mt) - display["ss"] - display["t"]
-        shell.append("-t {t}".format(t=clip_duration))
-    shell.append("-i {dir}/{tmp}.mp4".format(dir=cnf.DATADIR, tmp=display["tmp"]))
+        vfshell.append("subtitles={tmp}.srt".format(tmp=display["tmp"]))
+
     if "lx" in display:
+        havesub = True
         delogo = "x={lx}:y={ly}:w={w}:h={h}".format(
             lx=display["lx"],
             ly=display["ly"],
             w=display["rx"] - display["lx"],
             h=display["ry"] - display["ly"]
         )
-
-        shell.append(
-            "-vf delogo={delogo} -vcodec h264_videotoolbox -s hd1080 -b:v {kbs}K -acodec copy".format(delogo=delogo,
-                                                                                                      kbs=kbs))
-    else:
-        if mp:
-            shell.append("-vcodec copy -acodec copy")
-        else:
-            shell.append("-vcodec h264_videotoolbox -s hd1080 -b:v {kbs}K -acodec copy".format(kbs=kbs))
-
-    shell.append("{dir}/{middle}".format(dir=cnf.DATADIR, middle=display["middle"]))
-
-    os.system(" ".join(shell))
-    shell = []
-    shell.append(
-        "ffmpeg -y -i {head} -vcodec copy -acodec copy -bsf:v h264_mp4toannexb -f mpegts {dir}/{tmp}_h.ts 2> /dev/null &".format(
-            head=cnf.HDADMP4,
-            kbs=kbs,
-            dir=cnf.DATADIR,
-            tmp=display["tmp"]
+        vfshell.append(
+            "delogo={delogo}".format(
+                delogo=delogo
+            ))
+    if havesub:
+        subshell.append("-vf \"{vf}\" -vcodec h264_videotoolbox -s hd1080 -b:v {kbs}K -acodec copy -f matroska pipe:1 |".format(
+            vf=";".join(vfshell),
+            kbs=kbs
         ))
+        shell.append(" ".join(subshell))
+        shell.append("ffmpeg -y -i pipe:0")
+    elif not mp:
+        subshell.append("-s hd1080 -b:v {kbs}K -acodec copy -f matroska pipe:1 |")
+        shell.append(" ".join(subshell))
+        shell.append("ffmpeg -y -i pipe:0")
+    elif not havecut:
+        shell.append("ffmpeg -y -i {id}.mp4".format(id=display["id"]))
+
     shell.append(
-        "ffmpeg -y -i {dir}/{middle} -vcodec copy -acodec copy -bsf:v h264_mp4toannexb -f mpegts {dir}/{tmp}.ts 2> /dev/null &".format(
-            dir=cnf.DATADIR,
+        "-vcodec copy -acodec copy -bsf:v h264_mp4toannexb -f mpegts {tmp}.ts &".format(
             middle=display["middle"],
             tmp=display["tmp"]
         ))
     shell.append(
-        "ffmpeg -y -f mpegts -i \"concat:{dir}/{tmp}_h.ts|{dir}/{tmp}.ts\" -vcodec copy -acodec copy -bsf:a aac_adtstoasc {dir}/{target}".format(
-            dir=cnf.DATADIR,
+        "ffmpeg -y -f mpegts -i \"concat:{head}.ts|{tmp}.ts\" -vcodec copy -acodec copy -bsf:a aac_adtstoasc {target}".format(
+            head=display["head"],
             tmp=display["tmp"],
             target=display["target"]
         ))
-
+    #print(" ".join(shell))
     os.system(" ".join(shell))
 
-    file_path="{dir}/{tmp}.mp4".format(dir=cnf.DATADIR,tmp=display["tmp"])
-    if os.path.exists(file_path):
-        os.remove(file_path)
-    file_path = "{dir}/{middle}".format(dir=cnf.DATADIR, middle=display["middle"])
-    if os.path.exists(file_path):
-        os.remove(file_path)
     file_path = "{dir}/{tmp}.srt".format(dir=cnf.DATADIR, tmp=display["tmp"])
     if os.path.exists(file_path):
         os.remove(file_path)
@@ -179,20 +191,3 @@ def cut(display):
 
     os.rename("{dir}/{id}.jpg".format(dir=cnf.DATADIR, id=display["id"]),
               "{dir}/{title}.jpg".format(dir=cnf.DATADIR, title=display["title"]))
-
-
-def subtitle(display):
-    if "sub" in display:
-        os.rename("{dir}/{id}.zh-Hans.srt".format(dir=cnf.DATADIR, id=display["id"]),
-                  "{dir}/{tmp}.srt".format(dir=cnf.DATADIR, tmp=display["tmp"]))
-        os.system(
-            "ffmpeg -i {dir}/{id}.mp4 -vf subtitles={dir}/{tmp}.srt -vcodec h264_videotoolbox -b:v 5000K {dir}/{tmp}.mp4".format(
-                dir=cnf.DATADIR,
-                id=display["id"],
-                tmp=display["tmp"]
-            ))
-        os.remove("{dir}/{id}.mp4".format(dir=cnf.DATADIR, id=display["id"]))
-        os.remove("{dir}/{tmp}.srt".format(dir=cnf.DATADIR, tmp=display["tmp"]))
-    else:
-        os.rename("{dir}/{id}.mp4".format(dir=cnf.DATADIR, id=display["id"]),
-                  "{dir}/{tmp}.mp4".format(dir=cnf.DATADIR, tmp=display["tmp"]))

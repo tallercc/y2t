@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 BASEDIR = "/Users/yuanliqiang/workspace/y2t"
-HDADMP4 = "/Users/yuanliqiang/workspace/y2t/movie/dota2.mp4"
+HEADDIR = "/Users/yuanliqiang/workspace/y2t/movie"
 DATADIR = "/Volumes/SamsungTF/download"
 YOUTUBEPARAM="-f '(bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4])' --buffer-size 16k --write-thumbnail --retries infinite"
 # YOUTUBEPARAM = "-f '(bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4])' --buffer-size 16k --retries infinite"
