@@ -99,10 +99,7 @@ def cut(display):
     mt = re.search(r'Duration: ([0-9:\.]+),', out, re.M | re.I).group(1)
     mp = out.find("1920x1080") > 0
     kbs = re.search(r'bitrate: ([0-9]+) kb', out, re.M | re.I).group(1)
-    # tmp.ts
-    if os.path.exists("{dir}/{tmp}.ts".format(dir=cnf.DATADIR, tmp=display["tmp"])):
-        os.remove("{dir}/{tmp}.ts".format(dir=cnf.DATADIR, tmp=display["tmp"]))
-    os.system("mkfifo {dir}/{tmp}.ts".format(dir=cnf.DATADIR, tmp=display["tmp"]))
+
     # head ts
     if not os.path.exists("{dir}/{head}.ts".format(dir=cnf.DATADIR, head=display["head"])):
         os.system(
@@ -169,22 +166,28 @@ def cut(display):
         shell.append("ffmpeg -y -i {id}.mp4".format(id=display["id"]))
 
     shell.append(
-        "-vcodec copy -acodec copy -bsf:v h264_mp4toannexb -f mpegts {tmp}.ts &".format(
+        "-vcodec copy -acodec copy -bsf:v h264_mp4toannexb -f mpegts {tmp}.ts ".format(
             middle=display["middle"],
             tmp=display["tmp"]
         ))
-    shell.append(
-        "ffmpeg -y -f mpegts -i \"concat:{head}.ts|{tmp}.ts\" -vcodec copy -acodec copy -bsf:a aac_adtstoasc {target}".format(
+    os.system(" ".join(shell))
+    #merge head and movie.ts
+    os.system(
+        "cd {dir} ; ffmpeg -y -f mpegts -i \"concat:{head}.ts|{tmp}.ts\" -vcodec copy -acodec copy -bsf:a aac_adtstoasc {target}".format(
+            dir=cnf.DATADIR,
             head=display["head"],
             tmp=display["tmp"],
             target=display["target"]
         ))
-    #print(" ".join(shell))
-    os.system(" ".join(shell))
 
-    file_path = "{dir}/{tmp}.srt".format(dir=cnf.DATADIR, tmp=display["tmp"])
-    if os.path.exists(file_path):
-        os.remove(file_path)
+    if os.path.exists("{dir}/{tmp}.srt".format(dir=cnf.DATADIR, tmp=display["tmp"])):
+        os.remove("{dir}/{tmp}.srt".format(dir=cnf.DATADIR, tmp=display["tmp"]))
+
+    if os.path.exists("{dir}/{tmp}.ts".format(dir=cnf.DATADIR, tmp=display["tmp"])):
+        os.remove("{dir}/{tmp}.ts".format(dir=cnf.DATADIR, tmp=display["tmp"]))
+
+    if os.path.exists("{dir}/{id}.mp4".format(dir=cnf.DATADIR, id=display["id"])):
+        os.remove("{dir}/{id}.mp4".format(dir=cnf.DATADIR, id=display["id"]))
 
     os.rename("{dir}/{target}".format(dir=cnf.DATADIR, target=display["target"]),
               "{dir}/{title}.mp4".format(dir=cnf.DATADIR, title=display["title"]))
