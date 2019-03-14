@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Index</title>
+    <style type="text/css">
+        table.altrowstable {
+            font-family: verdana, arial, sans-serif;
+            font-size: 11px;
+            color: #333333;
+            border-width: 1px;
+            border-color: #a9c6c9;
+            border-collapse: collapse;
+        }
+
+        table.altrowstable th {
+            border-width: 1px;
+            padding: 8px;
+            border-style: solid;
+            border-color: #a9c6c9;
+        }
+
+        table.altrowstable td {
+            border-width: 1px;
+            padding: 8px;
+            border-style: solid;
+            border-color: #a9c6c9;
+        }
+
+        .oddrowcolor {
+            background-color: #d4e3e5;
+        }
+
+        .evenrowcolor {
+            background-color: #c3dde0;
+        }
+
+        input.dlurlinput {
+            width: 600px;
+            height: 30px;
+        }
+
+        input.cutinput {
+            width: 60px;
+            height: 30px;
+        }
+
+        input.mosaicinput {
+            width: 60px;
+            height: 30px;
+        }
+
+        input.subinput {
+
+        }
+    </style>
+    <script type="text/javascript" src="static/script/jquery-3.3.1.min.js"></script>
+    <script type="text/javascript">
+        function altRows(id) {
+            if (document.getElementsByTagName) {
+
+                var table = document.getElementById(id);
+                var rows = table.getElementsByTagName("tr");
+
+                for (i = 0; i < rows.length; i++) {
+                    if (i % 2 == 0) {
+                        rows[i].className = "evenrowcolor";
+                    } else {
+                        rows[i].className = "oddrowcolor";
+                    }
+                }
+            }
+        }
+
+        function deleteTr(obj) {
+            $(obj).parents("tr").remove();
+            altRows('alternatecolor')
+        }
+
+        $(document).ready(function () {
+            $("#btnappend").click(function () {
+                $("#alternatecolor").append("<tr>\n" +
+                    "        <td><input type=\"checkbox\" name=\"cbdelete\"/>\n" +
+                    "        </td>\n" +
+                    "        <td>\n" +
+                    "            <select>\n" +
+                    "                <option value=\"dota2.mp4\">dota2</option>\n" +
+                    "            </select>\n" +
+                    "        </td>\n" +
+                    "        <td><input class=\"dlurlinput\" type=\"text\" name=\"dlurl\" id=\"dlurl\"/></td>\n" +
+                    "        <td>\n" +
+                    "            <label for=\"ss\">ss</label><input class=\"cutinput\" type=\"text\" name=\"ss\" id=\"ss\"/>\n" +
+                    "            <label for=\"to\">to</label><input class=\"cutinput\" type=\"text\" name=\"to\" id=\"to\"/>\n" +
+                    "            <label for=\"t\">t</label><input class=\"cutinput\" type=\"text\" name=\"t\" id=\"t\"/>\n" +
+                    "        </td>\n" +
+                    "        <td>\n" +
+                    "            <label for=\"lx\">lx</label><input class=\"mosaicinput\" type=\"text\" name=\"lx\" id=\"lx\"/>\n" +
+                    "            <label for=\"ly\">ly</label><input class=\"mosaicinput\" type=\"text\" name=\"ly\" id=\"ly\"/>\n" +
+                    "            <label for=\"rx\">rx</label><input class=\"mosaicinput\" type=\"text\" name=\"rx\" id=\"rx\"/>\n" +
+                    "            <label for=\"ry\">ry</label><input class=\"mosaicinput\" type=\"text\" name=\"ry\" id=\"ry\"/>\n" +
+                    "        </td>\n" +
+                    "        <td>\n" +
+                    "            <input class=\"subinput\" type=\"checkbox\" id=\"subtitle\" value=\"0\"/>\n" +
+                    "        </td>\n" +
+                    "        <td>\n" +
+                    "            <button id=\"btnrm\" onclick=\"deleteTr(this)\" >删除本行</button>\n" +
+                    "        </td>" +
+                    "    </tr>");
+                altRows('alternatecolor')
+            });
+            $("#btndeleteall").click(function () {
+                var res = confirm('确认要删除吗？');
+                if (res == true) {
+                    $("input[name='cbdelete']:checked").each(function () {
+                        n = $(this).parents("tr").index();
+                        $("table#alternatecolor").find("tr:eq(" + n + ")").remove();
+                    });
+                    altRows('alternatecolor')
+                }
+            });
+            $("#btnsubmit").click(function () {
+                displaylist = []
+                $("#alternatecolor").find("tr").each(function () {
+                    var tdarr = $(this).children()
+                    if (tdarr.eq(1).find("select").length > 0 && tdarr.eq(2).find("input#dlurl").val().length > 0) {
+                        item = {}
+                        item["head"] = tdarr.eq(1).find("select").val()
+                        item["url"] = tdarr.eq(2).find("input#dlurl").val()
+                        if (tdarr.eq(3).find("input#ss").val().length > 0) {
+                            item["ss"] = parseInt(tdarr.eq(3).find("input#ss").val())
+                        }
+                        if (tdarr.eq(3).find("input#to").val().length > 0) {
+                            item["to"] = parseInt(tdarr.eq(3).find("input#to").val())
+                        }
+                        if (tdarr.eq(3).find("input#t").val().length > 0) {
+                            item["t"] = parseInt(tdarr.eq(3).find("input#t").val())
+                        }
+                        if (tdarr.eq(4).find("input#lx").val().length > 0
+                            && tdarr.eq(4).find("input#ly").val().length > 0
+                            && tdarr.eq(4).find("input#rx").val().length > 0
+                            && tdarr.eq(4).find("input#ry").val().length > 0
+                        ) {
+                            item["lx"] = parseInt(tdarr.eq(4).find("input#lx").val())
+                            item["ly"] = parseInt(tdarr.eq(4).find("input#ly").val())
+                            item["rx"] = parseInt(tdarr.eq(4).find("input#rx").val())
+                            item["ry"] = parseInt(tdarr.eq(4).find("input#ry").val())
+                        }
+                        if (tdarr.eq(5).find("input#subtitle").is(":checked")) {
+                            item["sub"] = tdarr.eq(5).find("input#subtitle").val()
+                        }
+                        displaylist.push(item)
+                    }
+                })
+                $.ajax({
+                    type: "POST",
+                    url: "",
+                    contentType: 'application/json',
+                    data: JSON.stringify(displaylist),
+
+                })
+                $.ajax({
+                    type: "POST",
+                    url: "/y2t",
+                    data: JSON.stringify(displaylist),
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (data) {
+                        window.location.href="/ask?id="+data["askid"];
+                    },
+                    failure: function (errMsg) {
+                        alert(errMsg);
+                    }
+                });
+            });
+            altRows('alternatecolor')
+        });
+    </script>
+</head>
+<body>
+<table class="altrowstable" id="alternatecolor">
+    <tr>
+        <th>
+            <button id="btndeleteall">删除</button>
+        </th>
+        <th>视频头</th>
+        <th>URL</th>
+        <th>裁剪</th>
+        <th>马赛克</th>
+        <th>字幕</th>
+        <th>
+            <button id="btnappend">追加一行</button>
+        </th>
+    </tr>
+    <tr>
+        <td>
+            <input type="checkbox" name="cbdelete"/>
+        </td>
+        <td>
+            <select>
+                <option value="dota2.mp4">dota2</option>
+            </select>
+        </td>
+        <td><input class="dlurlinput" type="text" name="dlurl" id="dlurl"/></td>
+        <td>
+            <label for="ss">ss</label><input class="cutinput" type="text" name="ss" id="ss"/>
+            <label for="to">to</label><input class="cutinput" type="text" name="to" id="to"/>
+            <label for="t">t</label><input class="cutinput" type="text" name="t" id="t"/>
+        </td>
+        <td>
+            <label for="lx">lx</label><input class="mosaicinput" type="text" name="lx" id="lx"/>
+            <label for="ly">ly</label><input class="mosaicinput" type="text" name="ly" id="ly"/>
+            <label for="rx">rx</label><input class="mosaicinput" type="text" name="rx" id="rx"/>
+            <label for="ry">ry</label><input class="mosaicinput" type="text" name="ry" id="ry"/>
+        </td>
+        <td>
+            <input class="subinput" type="checkbox" id="subtitle" value="0"/>
+        </td>
+        <td>
+            <button id="btnrm" onclick="deleteTr(this)">删除本行</button>
+        </td>
+    </tr>
+</table>
+<button id="btnsubmit">提交列表</button>
+</body>
+</html>

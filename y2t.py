@@ -3,7 +3,7 @@
 
 import os, time, math, json
 from multiprocessing import Process
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify,render_template
 
 import cnf
 import list
@@ -23,8 +23,11 @@ def foreach(proxy, displays):
         p.start()
         p.join()
 
-
-@app.route('/', methods=['POST'])
+# curl --header "Content-Type: application/json" --request POST
+# --data '[{"url":"https://www.youtube.com/watch?v=Z-pU-wKr8ew","head":"dota2.mp4", "ss": 11, "t": 15,"lx":1360,"ly":1030,"rx":1640,"ry":1060},
+# {"url":"https://www.youtube.com/watch?v=xD-iKQcDM-o","head":"dota2.mp4", "ss": 11, "t": 15,"lx":1360,"ly":1030,"rx":1640,"ry":1060}]'
+# http://127.0.0.1:8080/y2t
+@app.route('/y2t', methods=['POST'])
 def y2thandler():
     if request.method == 'GET':
         return jsonify({"success": "false"})
@@ -44,7 +47,15 @@ def y2thandler():
                 idx = idx + 1
                 plist.append(p)
                 p.start()
-    return jsonify({"success": "true"})
+    return jsonify({"askid": round(time.time()*1000)})
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/ask')
+def ask():
+    return render_template('ask.html')
 
 if __name__ == "__main__":
     app.run(host='127.0.0.1', port=8080)
